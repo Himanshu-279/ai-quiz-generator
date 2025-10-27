@@ -28,7 +28,7 @@ try:
     import google.generativeai as genai_imported
     genai = genai_imported
     if os.environ.get("GOOGLE_API_KEY"):
-    GEMINI_API_KEY = os.environ.get("GOOGLE_API_KEY")
+        GEMINI_API_KEY = os.environ.get("GOOGLE_API_KEY")
         genai.configure(api_key=GEMINI_API_KEY)
         IS_API_CONFIGURED = True
         logging.info("✅ Google (Gemini) API Key found.")
