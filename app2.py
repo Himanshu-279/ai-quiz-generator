@@ -27,8 +27,8 @@ genai = None
 try:
     import google.generativeai as genai_imported
     genai = genai_imported
-    if "GOOGLE_API_KEY" in st.secrets and st.secrets["GOOGLE_API_KEY"]:
-        GEMINI_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    if os.environ.get("GOOGLE_API_KEY"):
+    GEMINI_API_KEY = os.environ.get("GOOGLE_API_KEY")
         genai.configure(api_key=GEMINI_API_KEY)
         IS_API_CONFIGURED = True
         logging.info("✅ Google (Gemini) API Key found.")
@@ -46,7 +46,7 @@ except Exception as e:
 @st.cache_resource
 def connect_to_db():
     try:
-        uri = st.secrets.get("MONGO_URI")
+        uri = os.environ.get("MONGO_URI")
         if not uri: st.error("🚨 MONGO_URI missing."); st.stop()
         client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=5000)
         client.admin.command('ping')
@@ -111,7 +111,7 @@ def submit_quiz(quiz_id, student_username, user_answers, questions):
         logging.error(f"🚨 ERROR in submit_quiz DB: {e}", exc_info=True)
 
 def send_quiz_invites(quiz_id, quiz_topic, student_emails):
-    sender_email = st.secrets.get("SENDER_EMAIL"); sender_password = st.secrets.get("SENDER_PASSWORD"); app_base_url = st.secrets.get("APP_BASE_URL")
+    sender_email = os.environ.get("SENDER_EMAIL"); sender_password = os.environ.get("SENDER_PASSWORD"); app_base_url = os.environ.get("APP_BASE_URL")
     if not sender_email or not sender_password: st.error("Email credentials missing."); return 0
     if not app_base_url: st.error("APP_BASE_URL missing."); return 0
     quiz_link = f"{app_base_url.strip('/')}?quiz_id={quiz_id}"
