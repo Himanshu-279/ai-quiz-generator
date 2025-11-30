@@ -1,5 +1,5 @@
-# Secrets ko GitHub p chupaane k liye
+
 .streamlit/secrets.toml
 
-# Faltu files
+
 __pycache__/
