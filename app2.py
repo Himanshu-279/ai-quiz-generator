@@ -6,21 +6,21 @@ import time
 import hashlib
 import json
 import os
-# Remove: from streamlit_autorefresh import st_autorefresh # ऑटो-रिफ्रेश हटा दिया
+
 import smtplib
 from email.mime.text import MIMEText
 import logging
 
-# --- Logging Setup ---
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# --- 1. Page Configuration ---
+
 st.set_page_config(page_title="Quiz Conductor", page_icon="🧠", layout="wide")
 
-# --- Admin Code ---
-ADMIN_CODE = "ADMIN123"
 
-# --- 2. API Key Checker ---
+ADMIN_CODE = os.environ.get("ADMIN_CODE")
+
+
 IS_API_CONFIGURED = False
 GEMINI_API_KEY = None
 genai = None
@@ -42,7 +42,7 @@ except Exception as e:
     logging.error(f"🚨 Failed to configure Gemini API: {e}", exc_info=True)
     IS_API_CONFIGURED = False
 
-# --- 3. Database Connection ---
+
 @st.cache_resource
 def connect_to_db():
     try:
@@ -64,7 +64,7 @@ try:
     logging.info("✅ Database collections ready.")
 except Exception as e: st.error(f"🚨 DB Collection Error: {e}"); logging.error(f"🚨 DB Collection Error: {e}", exc_info=True); st.stop()
 
-# --- 4. Helper Functions ---
+
 def make_hashes(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
@@ -132,7 +132,6 @@ def send_quiz_invites(quiz_id, quiz_topic, student_emails):
     if failed: st.warning(f"Could not send to: {', '.join(failed)}")
     return sent_count
 
-# --- 5. Views ---
 def student_quiz_view(quiz_id):
     st.title("🧠 Take Quiz")
     if not st.session_state.get('logged_in') or st.session_state.get('role') != 'student': st.warning("Login as student."); st.stop()
@@ -157,7 +156,6 @@ def student_quiz_view(quiz_id):
             st.rerun()
     else: # Quiz in progress
         start_time = st.session_state.get(start_time_key, time.time())
-        # ** FIX: Read duration correctly from DB **
         duration_seconds = quiz_data.get('durationInSeconds', 60) # Read the correct key name from DB
         time_left = max(0, duration_seconds - (time.time() - start_time))
         st.markdown(f"### **Time Left: {int(time_left // 60):02d}:{int(time_left % 60):02d}**")
@@ -178,10 +176,8 @@ def student_quiz_view(quiz_id):
 
         if st.button("✅ Submit Quiz"): submit_quiz(quiz_id, student_username, user_answers, questions); st.rerun()
         if time_left <= 0: st.warning("Time's up! Auto-submitting..."); time.sleep(2); submit_quiz(quiz_id, student_username, user_answers, questions); st.rerun()
-        # ** FIX: Timer update relies on Streamlit's natural rerun on interaction, remove sleep/rerun loop **
-        # else: time.sleep(1); st.rerun() # Removed for stability
 
-# --- 5a. Host Dashboard View ---
+
 def host_dashboard_view():
     if st.session_state.get('role') != 'host': st.error("Access Denied."); st.stop()
     st.sidebar.success(f"Welcome, **{st.session_state['name']}** (Host)!")
@@ -190,7 +186,7 @@ def host_dashboard_view():
 
     host_tab, results_tab, invite_tab = st.tabs(["👨‍🏫 Create Quiz", "📊 Live Results", "📧 Invite Students"])
 
-    # --- Create Quiz Tab ---
+
     with host_tab:
         with st.form("quiz_creation_form"):
             st.header("Create a New Quiz")
@@ -224,11 +220,9 @@ def host_dashboard_view():
                     except Exception as e: st.error(f"Error saving quiz: {e}")
                 else: st.error("Failed to get valid questions.")
 
-    # --- Live Results Tab ---
+
     with results_tab:
         st.header("Live Leaderboard & Progress")
-        # ** ऑटो-रिफ्रेश हटाया **
-        # refresh_count = st_autorefresh(interval=5000, limit=None, key="results_refresh") 
 
         host_quizzes = list(quizzes_collection.find({"host": st.session_state["username"]}, {"topic": 1, "quizId": 1, "_id": 0}))
 
@@ -243,12 +237,10 @@ def host_dashboard_view():
             selected_quiz_id = quiz_options[selected_quiz_display]
             st.caption(f"Showing results for **{selected_quiz_id}**")
 
-            # ** मैनुअल रिफ्रेश बटन वापस लगाया **
             if st.button("🔄 Refresh Results", key="manual_refresh_button"):
                  st.rerun() # Rerun the script to fetch fresh data
 
             if selected_quiz_id:
-                # Active Students
                 st.subheader("Students Taking Quiz")
                 try:
                     active_students = list(active_sessions_collection.find({"quizId": selected_quiz_id}, {"_id": 0, "studentUsername": 1}))
@@ -276,7 +268,6 @@ def host_dashboard_view():
                     else: st.info("No results submitted yet.")
                 except Exception as e: st.error(f"Could not fetch submitted results: {e}")
 
-    # --- Invite Students Tab ---
     with invite_tab:
          st.header("Invite Students via Email")
          host_quizzes_invite = list(quizzes_collection.find({"host": st.session_state["username"]}, {"topic": 1, "quizId": 1, "_id": 0}))
@@ -306,7 +297,6 @@ def host_dashboard_view():
                                  if sent_count > 0: st.success(f"Sent {sent_count} invites!")
                                  else: st.error("Failed to send. Check secrets.toml & logs.")
 
-# --- 6. Main Controller ---
 quiz_id_from_url = st.query_params.get("quiz_id")
 
 if quiz_id_from_url:
@@ -348,7 +338,6 @@ elif 'logged_in' in st.session_state:
      else: st.info("Logged in as student. Use a quiz link."); st.sidebar.button("Logout", key="student_logout", on_click=lambda: st.session_state.clear())
 
 else:
-    # --- Default Login/Register Page ---
     st.title("🧠 Quiz Conductor")
     login_tab, register_tab = st.tabs(["Login", "Register"])
     with login_tab:
