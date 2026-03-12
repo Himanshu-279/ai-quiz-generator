@@ -119,15 +119,15 @@ def send_quiz_invites(quiz_id, quiz_topic, student_emails):
     body_html = f"<html><body><p>Hello,</p><p>Invitation for quiz on '<b>{quiz_topic}</b>'.</p><p>Click link:</p><p><a href=\"{quiz_link}\">Start Quiz</a></p><p>Or copy URL:</p><p>{quiz_link}</p><p>Good luck!</p></body></html>"
     sent_count = 0; failed = []
     try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 587); server.ehlo(); server.login(sender_email, sender_password)
-        logging.info("✅ SMTP Connected.")
+        server = smtplib.SMTP('smtp.gmail.com', 587); server.ehlo(); server.starttls(); server.ehlo(); server.login(sender_email, sender_password)
+        logging.info("✅ SMTP Connected via TLS.")
         for email in student_emails:
             email = email.strip()
             if email and '@' in email:
                 msg = MIMEText(body_html, 'html'); msg['Subject'] = subject; msg['From'] = sender_email; msg['To'] = email
                 try: server.sendmail(sender_email, [email], msg.as_string()); sent_count += 1; logging.info(f"✉️ Email sent to {email}")
                 except Exception as send_e: logging.error(f"🚨 ERROR sending to {email}: {send_e}", exc_info=True); failed.append(email)
-        server.close(); logging.info("✅ SMTP Closed.")
+        server.quit(); logging.info("✅ SMTP Closed.")
     except Exception as e: st.error(f"Email sending failed: {e}"); logging.error(f"🚨 SMTP Error: {e}", exc_info=True); return 0
     if failed: st.warning(f"Could not send to: {', '.join(failed)}")
     return sent_count
