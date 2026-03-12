@@ -4,3 +4,4 @@ pandas
 shortuuid
 google-generativeai
 dnspython
+sendgrid
