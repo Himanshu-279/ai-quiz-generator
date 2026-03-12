@@ -119,7 +119,7 @@ def send_quiz_invites(quiz_id, quiz_topic, student_emails):
     body_html = f"<html><body><p>Hello,</p><p>Invitation for quiz on '<b>{quiz_topic}</b>'.</p><p>Click link:</p><p><a href=\"{quiz_link}\">Start Quiz</a></p><p>Or copy URL:</p><p>{quiz_link}</p><p>Good luck!</p></body></html>"
     sent_count = 0; failed = []
     try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465); server.ehlo(); server.login(sender_email, sender_password)
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 587); server.ehlo(); server.login(sender_email, sender_password)
         logging.info("✅ SMTP Connected.")
         for email in student_emails:
             email = email.strip()
