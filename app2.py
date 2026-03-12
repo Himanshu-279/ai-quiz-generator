@@ -10,6 +10,8 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 import logging
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -111,26 +113,50 @@ def submit_quiz(quiz_id, student_username, user_answers, questions):
         logging.error(f"🚨 ERROR in submit_quiz DB: {e}", exc_info=True)
 
 def send_quiz_invites(quiz_id, quiz_topic, student_emails):
-    sender_email = os.environ.get("SENDER_EMAIL"); sender_password = os.environ.get("SENDER_PASSWORD"); app_base_url = os.environ.get("APP_BASE_URL")
-    if not sender_email or not sender_password: st.error("Email credentials missing."); return 0
-    if not app_base_url: st.error("APP_BASE_URL missing."); return 0
+    sender_email = os.environ.get("SENDER_EMAIL")
+    sg_api_key = os.environ.get("SENDGRID_API_KEY")
+    app_base_url = os.environ.get("APP_BASE_URL")
+
+    if not sg_api_key or not sender_email:
+        st.error("SendGrid API Key or Sender Email missing in Environment Variables.")
+        return 0
+
     quiz_link = f"{app_base_url.strip('/')}?quiz_id={quiz_id}"
     subject = f"Quiz Invitation: {quiz_topic}"
-    body_html = f"<html><body><p>Hello,</p><p>Invitation for quiz on '<b>{quiz_topic}</b>'.</p><p>Click link:</p><p><a href=\"{quiz_link}\">Start Quiz</a></p><p>Or copy URL:</p><p>{quiz_link}</p><p>Good luck!</p></body></html>"
-    sent_count = 0; failed = []
+    body_html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif;">
+        <h3>Quiz Invitation</h3>
+        <p>Hello, You are invited to take the quiz on <b>{quiz_topic}</b>.</p>
+        <p><a href='{quiz_link}' style='background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>Start Quiz Now</a></p>
+        <p>Or use this link: {quiz_link}</p>
+      </body>
+    </html>
+    """
+    
+    sent_count = 0
     try:
-        server = smtplib.SMTP('smtp.gmail.com', 587); server.ehlo(); server.starttls(); server.ehlo(); server.login(sender_email, sender_password)
-        logging.info("✅ SMTP Connected via TLS.")
+        sg = SendGridAPIClient(sg_api_key)
         for email in student_emails:
             email = email.strip()
             if email and '@' in email:
-                msg = MIMEText(body_html, 'html'); msg['Subject'] = subject; msg['From'] = sender_email; msg['To'] = email
-                try: server.sendmail(sender_email, [email], msg.as_string()); sent_count += 1; logging.info(f"✉️ Email sent to {email}")
-                except Exception as send_e: logging.error(f"🚨 ERROR sending to {email}: {send_e}", exc_info=True); failed.append(email)
-        server.quit(); logging.info("✅ SMTP Closed.")
-    except Exception as e: st.error(f"Email sending failed: {e}"); logging.error(f"🚨 SMTP Error: {e}", exc_info=True); return 0
-    if failed: st.warning(f"Could not send to: {', '.join(failed)}")
-    return sent_count
+                message = Mail(
+                    from_email=sender_email,
+                    to_emails=email,
+                    subject=subject,
+                    html_content=body_html
+                )
+                response = sg.send(message)
+                # 202 status code means SendGrid accepted the request
+                if response.status_code in [200, 201, 202]:
+                    sent_count += 1
+                    logging.info(f"✉️ Email sent to {email} via SendGrid")
+        
+        return sent_count
+    except Exception as e:
+        st.error(f"SendGrid Error: {e}")
+        logging.error(f"🚨 SendGrid SMTP Error: {e}")
+        return 0
 
 def student_quiz_view(quiz_id):
     st.title("🧠 Take Quiz")
