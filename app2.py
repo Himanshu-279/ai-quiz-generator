@@ -79,7 +79,7 @@ def generate_quiz_with_ai(topic, difficulty, num_questions):
     st.info("Generating quiz using Gemini AI... 🧠")
     prompt = f'Generate a multiple-choice quiz about "{topic}" (difficulty: {difficulty}) with exactly {num_questions} questions. Output ONLY a valid JSON list (RFC 8259) of objects. Each object must have keys: "question", "options" (list of 4 strings), "answer".'
     try:
-        model = genai.GenerativeModel('gemini-pro-latest')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(prompt, generation_config=genai.types.GenerationConfig(temperature=0.6), safety_settings={'HARASSMENT':'block_none','HATE_SPEECH':'block_none','SEXUAL':'block_none','DANGEROUS':'block_none'})
         if not response.candidates or not response.candidates[0].content.parts: st.error("AI returned no content."); logging.error(f"AI No candidates/parts. Feedback: {response.prompt_feedback}"); return None
         text_response = response.candidates[0].content.parts[0].text.strip().replace("```json", "").replace("```", "").strip()
